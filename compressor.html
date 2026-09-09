@@ -3,58 +3,305 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compressor Relay Switch</title>
+  <title>HTi Control Room</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
-    .card { background: white; border-radius: 8px; padding: 25px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .btn { padding: 15px 30px; font-size: 18px; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px; width: 80%; }
-    .btn-on { background-color: #28a745; }
-    .btn-off { background-color: #dc3545; }
-    .status { font-weight: bold; font-size: 20px; }
-    #systemMessage { color: #d9534f; font-weight: bold; margin-top: 15px; }
+    :root {
+      --bg-dark: #121417;
+      --panel-bg: #1c2026;
+      --panel-border: #323843;
+      --accent-green: #00ff66;
+      --accent-red: #ff3333;
+      --accent-amber: #ffaa00;
+      --text-main: #d0d7de;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 15px;
+      box-sizing: border-box;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 2px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 30px 20px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+      position: relative;
+    }
+
+    .panel-header {
+      border-bottom: 2px solid var(--panel-border);
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+
+    .panel-header h1 {
+      font-size: 22px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .panel-header .subtext {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      color: #6e7681;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .readout-box {
+      background: #08090a;
+      border: 1px solid #2d333b;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 25px;
+      text-align: center;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+    }
+
+    .readout-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+
+    .status {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 24px;
+      color: var(--accent-amber);
+      text-shadow: 0 0 8px rgba(255, 170, 0, 0.4);
+    }
+
+    .status.on {
+      color: var(--accent-green);
+      text-shadow: 0 0 10px rgba(0, 255, 102, 0.5);
+    }
+
+    .status.off {
+      color: #6e7681;
+      text-shadow: none;
+    }
+
+    #systemMessage {
+      min-height: 38px;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--accent-red);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .input-box {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .input-box label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+
+    input[type="password"] {
+      background: #08090a;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      width: 100%;
+      outline: none;
+      font-family: monospace;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--accent-green);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.5);
+    }
+
+    .btn-on {
+      background: #1a4d2e;
+      color: var(--accent-green);
+      border: 1px solid var(--accent-green);
+    }
+
+    .btn-on:hover {
+      background: #22663d;
+      box-shadow: 0 0 12px rgba(0, 255, 102, 0.3);
+    }
+
+    .btn-off {
+      background: #4d1a1a;
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+    }
+
+    .btn-off:hover {
+      background: #662222;
+      box-shadow: 0 0 12px rgba(255, 51, 51, 0.3);
+    }
+
+    .bypass-panel {
+      margin-top: 30px;
+      border-top: 1px dashed var(--panel-border);
+      padding-top: 20px;
+    }
+
+    .btn-bypass {
+      background: #322500;
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber);
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-bypass:hover {
+      background: #4d3800;
+      box-shadow: 0 0 8px rgba(255, 170, 0, 0.3);
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>120V Compressor Control</h2>
-    <p>State: <span id="relayStatus" class="status">Connecting...</span></p>
-    <div id="systemMessage"></div>
-    <button class="btn btn-on" onclick="sendCommand('ON')">Turn ON</button>
-    <button class="btn btn-off" onclick="sendCommand('OFF')">Turn OFF</button>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h1>HTi Control Room</h1>
+      <div class="subtext">120V Compressor Interface</div>
+    </div>
+
+    <div class="readout-box">
+      <div class="readout-label">System Status</div>
+      <div id="relayStatus" class="status">OFFLINE</div>
+    </div>
+
+    <div id="systemMessage">INITIALIZING CONNECTION...</div>
+
+    <div class="input-box">
+      <label for="opPassword">Operator Authorization Key</label>
+      <input type="password" id="opPassword" placeholder="ENTER KEY">
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-on" onclick="sendCommand('ON')">START COMPRESSOR</button>
+      <button class="btn btn-off" onclick="sendCommand('OFF')">STOP COMPRESSOR</button>
+    </div>
+
+    <div class="bypass-panel">
+      <button class="btn-bypass" onclick="sendCommand('BYPASS')">TOGGLE TEST MODE</button>
+    </div>
   </div>
 
   <script>
     const host = "wss://91edf0b43131429b9a2d60d852310ada.s1.eu.hivemq.cloud:8884/mqtt";
     const options = {
       username: "hticompressor",
-      password: "password 90694link",
-      clientId: "web_client_" + Math.random().toString(16).substr(2, 8)
+      password: "90694link",
+      clientId: "hti_console_" + Math.random().toString(16).substr(2, 8)
     };
 
     const client = mqtt.connect(host, options);
 
     client.on('connect', () => {
-      document.getElementById('relayStatus').innerText = "Connected";
+      document.getElementById('systemMessage').innerText = "";
+      document.getElementById('relayStatus').innerText = "ONLINE";
       client.subscribe('esp32/relay/status');
     });
 
     client.on('message', (topic, message) => {
       if (topic === 'esp32/relay/status') {
         const msg = message.toString();
+        const statusEl = document.getElementById('relayStatus');
+        const msgEl = document.getElementById('systemMessage');
+
         if (msg.startsWith("LOCKED_OUT")) {
-          document.getElementById('systemMessage').innerText = "SYSTEM FROZEN: Rapid cycling detected. Locked for 30 minutes.";
+          msgEl.style.color = "var(--accent-red)";
+          msgEl.innerText = "CRITICAL: RAPID CYCLING LOCKOUT (30M)";
         } else if (msg.startsWith("DELAY")) {
-          document.getElementById('systemMessage').innerText = "DELAY ACTIVE: Please wait 10 seconds between state changes.";
+          msgEl.style.color = "var(--accent-amber)";
+          msgEl.innerText = "INTERLOCK: 10S COOLDOWN IN EFFECT";
+        } else if (msg.startsWith("AUTH_FAILED")) {
+          msgEl.style.color = "var(--accent-red)";
+          msgEl.innerText = "ACCESS DENIED: INVALID AUTHORIZATION KEY";
+        } else if (msg.includes("TEST MODE")) {
+          msgEl.style.color = "var(--accent-amber)";
+          msgEl.innerText = "WARNING: TEST BYPASS MODE ACTIVE";
+          statusEl.innerText = msg;
+          statusEl.className = "status on";
         } else {
-          document.getElementById('systemMessage').innerText = "";
-          document.getElementById('relayStatus').innerText = msg;
+          msgEl.innerText = "";
+          statusEl.innerText = msg;
+          statusEl.className = "status " + (msg.includes("ON") ? "on" : "off");
         }
       }
     });
 
-    function sendCommand(cmd) {
-      client.publish('esp32/relay/control', cmd);
+    function sendCommand(action) {
+      const pass = document.getElementById('opPassword').value.trim();
+      if (!pass) {
+        document.getElementById('systemMessage').style.color = "var(--accent-amber)";
+        document.getElementById('systemMessage').innerText = "PLEASE ENTER AUTHORIZATION KEY";
+        return;
+      }
+
+      // Sends payload as "PASS:<entered_password>:<action>"
+      client.publish('esp32/relay/control', 'PASS:' + pass + ':' + action);
     }
   </script>
 </body>
