@@ -68,7 +68,7 @@
       border: 1px solid #2d333b;
       border-radius: 6px;
       padding: 15px;
-      margin-bottom: 25px;
+      margin-bottom: 15px;
       text-align: center;
       box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
     }
@@ -97,6 +97,61 @@
     .status.off {
       color: #6e7681;
       text-shadow: none;
+    }
+
+    /* NEW: Switch Status Indicator Styles */
+    .switch-indicator-box {
+      background: #08090a;
+      border: 1px solid #2d333b;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .switch-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+    }
+
+    .switch-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 16px;
+      letter-spacing: 1px;
+    }
+
+    .led-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #333;
+      box-shadow: inset 0 0 3px rgba(0,0,0,0.8);
+      transition: all 0.3s ease;
+    }
+
+    .switch-badge.state-on {
+      color: var(--accent-green);
+    }
+
+    .switch-badge.state-on .led-dot {
+      background-color: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    .switch-badge.state-off {
+      color: #6e7681;
+    }
+
+    .switch-badge.state-off .led-dot {
+      background-color: #444;
     }
 
     #systemMessage {
@@ -231,6 +286,15 @@
       <div id="relayStatus" class="status">OFFLINE</div>
     </div>
 
+    <!-- NEW: Switch Status Display -->
+    <div class="switch-indicator-box">
+      <span class="switch-label">Switch Status</span>
+      <div id="switchBadge" class="switch-badge state-off">
+        <span class="led-dot"></span>
+        <span id="switchText">OFF</span>
+      </div>
+    </div>
+
     <div id="systemMessage">INITIALIZING CONNECTION...</div>
 
     <div class="input-box">
@@ -269,6 +333,8 @@
         const msg = message.toString();
         const statusEl = document.getElementById('relayStatus');
         const msgEl = document.getElementById('systemMessage');
+        const switchBadge = document.getElementById('switchBadge');
+        const switchText = document.getElementById('switchText');
 
         if (msg.startsWith("LOCKED_OUT")) {
           msgEl.style.color = "var(--accent-red)";
@@ -284,10 +350,25 @@
           msgEl.innerText = "WARNING: TEST BYPASS MODE ACTIVE";
           statusEl.innerText = msg;
           statusEl.className = "status on";
+          
+          // Set switch indicator to ON during test mode
+          switchBadge.className = "switch-badge state-on";
+          switchText.innerText = "ON";
         } else {
           msgEl.innerText = "";
           statusEl.innerText = msg;
-          statusEl.className = "status " + (msg.includes("ON") ? "on" : "off");
+          const isRunning = msg.includes("ON");
+          
+          statusEl.className = "status " + (isRunning ? "on" : "off");
+
+          // Update Switch Status Indicator
+          if (isRunning) {
+            switchBadge.className = "switch-badge state-on";
+            switchText.innerText = "ON";
+          } else {
+            switchBadge.className = "switch-badge state-off";
+            switchText.innerText = "OFF";
+          }
         }
       }
     });
