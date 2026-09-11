@@ -99,61 +99,6 @@
       text-shadow: none;
     }
 
-    /* NEW: Switch Status Indicator Styles */
-    .switch-indicator-box {
-      background: #08090a;
-      border: 1px solid #2d333b;
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .switch-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #8b949e;
-    }
-
-    .switch-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'Courier New', Courier, monospace;
-      font-weight: bold;
-      font-size: 16px;
-      letter-spacing: 1px;
-    }
-
-    .led-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background-color: #333;
-      box-shadow: inset 0 0 3px rgba(0,0,0,0.8);
-      transition: all 0.3s ease;
-    }
-
-    .switch-badge.state-on {
-      color: var(--accent-green);
-    }
-
-    .switch-badge.state-on .led-dot {
-      background-color: var(--accent-green);
-      box-shadow: 0 0 10px var(--accent-green);
-    }
-
-    .switch-badge.state-off {
-      color: #6e7681;
-    }
-
-    .switch-badge.state-off .led-dot {
-      background-color: #444;
-    }
-
     #systemMessage {
       min-height: 38px;
       font-size: 12px;
@@ -281,18 +226,16 @@
       <div class="subtext">120V Compressor Interface</div>
     </div>
 
+    <!-- System Status Box (Wi-Fi Connection Status) -->
     <div class="readout-box">
       <div class="readout-label">System Status</div>
-      <div id="relayStatus" class="status">OFFLINE</div>
+      <div id="wifiStatus" class="status off">DISCONNECTED</div>
     </div>
 
-    <!-- NEW: Switch Status Display -->
-    <div class="switch-indicator-box">
-      <span class="switch-label">Switch Status</span>
-      <div id="switchBadge" class="switch-badge state-off">
-        <span class="led-dot"></span>
-        <span id="switchText">OFF</span>
-      </div>
+    <!-- Switch Status Box (GPIO Pin 4) -->
+    <div class="readout-box">
+      <div class="readout-label">Switch</div>
+      <div id="switchStatus" class="status off">OFF</div>
     </div>
 
     <div id="systemMessage">INITIALIZING CONNECTION...</div>
@@ -324,17 +267,26 @@
 
     client.on('connect', () => {
       document.getElementById('systemMessage').innerText = "";
-      document.getElementById('relayStatus').innerText = "ONLINE";
+      client.subscribe('esp32/wifi/status');
       client.subscribe('esp32/relay/status');
+      client.subscribe('esp32/gpio4/status');
     });
 
     client.on('message', (topic, message) => {
+      const msg = message.toString().trim();
+
+      // Updates Wi-Fi / System Status readout
+      if (topic === 'esp32/wifi/status') {
+        const wifiEl = document.getElementById('wifiStatus');
+        const isConnected = (msg === "CONNECTED");
+
+        wifiEl.innerText = isConnected ? "CONNECTED" : "DISCONNECTED";
+        wifiEl.className = "status " + (isConnected ? "on" : "off");
+      }
+
+      // Handle system interlock/error messages
       if (topic === 'esp32/relay/status') {
-        const msg = message.toString();
-        const statusEl = document.getElementById('relayStatus');
         const msgEl = document.getElementById('systemMessage');
-        const switchBadge = document.getElementById('switchBadge');
-        const switchText = document.getElementById('switchText');
 
         if (msg.startsWith("LOCKED_OUT")) {
           msgEl.style.color = "var(--accent-red)";
@@ -345,31 +297,18 @@
         } else if (msg.startsWith("AUTH_FAILED")) {
           msgEl.style.color = "var(--accent-red)";
           msgEl.innerText = "ACCESS DENIED: INVALID AUTHORIZATION KEY";
-        } else if (msg.includes("TEST MODE")) {
-          msgEl.style.color = "var(--accent-amber)";
-          msgEl.innerText = "WARNING: TEST BYPASS MODE ACTIVE";
-          statusEl.innerText = msg;
-          statusEl.className = "status on";
-          
-          // Set switch indicator to ON during test mode
-          switchBadge.className = "switch-badge state-on";
-          switchText.innerText = "ON";
         } else {
           msgEl.innerText = "";
-          statusEl.innerText = msg;
-          const isRunning = msg.includes("ON");
-          
-          statusEl.className = "status " + (isRunning ? "on" : "off");
-
-          // Update Switch Status Indicator
-          if (isRunning) {
-            switchBadge.className = "switch-badge state-on";
-            switchText.innerText = "ON";
-          } else {
-            switchBadge.className = "switch-badge state-off";
-            switchText.innerText = "OFF";
-          }
         }
+      }
+
+      // Handle GPIO 4 Switch state updates
+      if (topic === 'esp32/gpio4/status') {
+        const switchEl = document.getElementById('switchStatus');
+        const isON = (msg === "ON");
+
+        switchEl.innerText = isON ? "ON" : "OFF";
+        switchEl.className = "status " + (isON ? "on" : "off");
       }
     });
 
@@ -381,7 +320,6 @@
         return;
       }
 
-      // Sends payload as "PASS:<entered_password>:<action>"
       client.publish('esp32/relay/control', 'PASS:' + pass + ':' + action);
     }
   </script>
