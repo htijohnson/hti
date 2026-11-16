@@ -43,7 +43,7 @@
     .panel-header {
       border-bottom: 2px solid var(--panel-border);
       padding-bottom: 15px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       text-align: center;
     }
 
@@ -61,6 +61,38 @@
       color: #6e7681;
       text-transform: uppercase;
       margin-top: 4px;
+    }
+
+    .broker-box {
+      margin-bottom: 18px;
+      text-align: left;
+    }
+
+    .broker-box label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #8b949e;
+      margin-bottom: 5px;
+    }
+
+    select {
+      background: #08090a;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 10px 12px;
+      font-size: 13px;
+      border-radius: 6px;
+      width: 100%;
+      outline: none;
+      font-family: monospace;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: var(--accent-green);
     }
 
     .readout-box {
@@ -226,102 +258,13 @@
       <div class="subtext">120V Compressor Interface</div>
     </div>
 
-    <!-- System Status Box (Wi-Fi Connection Status) -->
-    <div class="readout-box">
-      <div class="readout-label">System Status</div>
-      <div id="wifiStatus" class="status off">DISCONNECTED</div>
+    <!-- MQTT Broker Selector -->
+    <div class="broker-box">
+      <label for="brokerSelect">MQTT Server</label>
+      <select id="brokerSelect" onchange="switchBroker()">
+        <option value="hivemq" selected>HiveMQ Cloud (Primary)</option>
+        <option value="emqx">EMQX Cloud (Secondary)</option>
+      </select>
     </div>
 
-    <!-- Switch Status Box (GPIO Pin 4) -->
-    <div class="readout-box">
-      <div class="readout-label">Switch</div>
-      <div id="switchStatus" class="status off">OFF</div>
-    </div>
-
-    <div id="systemMessage">INITIALIZING CONNECTION...</div>
-
-    <div class="input-box">
-      <label for="opPassword">Operator Authorization Key</label>
-      <input type="password" id="opPassword" placeholder="ENTER KEY">
-    </div>
-
-    <div class="controls">
-      <button class="btn btn-on" onclick="sendCommand('ON')">START COMPRESSOR</button>
-      <button class="btn btn-off" onclick="sendCommand('OFF')">STOP COMPRESSOR</button>
-    </div>
-
-    <div class="bypass-panel">
-      <button class="btn-bypass" onclick="sendCommand('BYPASS')">TOGGLE TEST MODE</button>
-    </div>
-  </div>
-
-  <script>
-    const host = "wss://91edf0b43131429b9a2d60d852310ada.s1.eu.hivemq.cloud:8884/mqtt";
-    const options = {
-      username: "hticompressor",
-      password: "90694link",
-      clientId: "hti_console_" + Math.random().toString(16).substr(2, 8)
-    };
-
-    const client = mqtt.connect(host, options);
-
-    client.on('connect', () => {
-      document.getElementById('systemMessage').innerText = "";
-      client.subscribe('esp32/wifi/status');
-      client.subscribe('esp32/relay/status');
-      client.subscribe('esp32/gpio4/status');
-    });
-
-    client.on('message', (topic, message) => {
-      const msg = message.toString().trim();
-
-      // Updates Wi-Fi / System Status readout
-      if (topic === 'esp32/wifi/status') {
-        const wifiEl = document.getElementById('wifiStatus');
-        const isConnected = (msg === "CONNECTED");
-
-        wifiEl.innerText = isConnected ? "CONNECTED" : "DISCONNECTED";
-        wifiEl.className = "status " + (isConnected ? "on" : "off");
-      }
-
-      // Handle system interlock/error messages
-      if (topic === 'esp32/relay/status') {
-        const msgEl = document.getElementById('systemMessage');
-
-        if (msg.startsWith("LOCKED_OUT")) {
-          msgEl.style.color = "var(--accent-red)";
-          msgEl.innerText = "CRITICAL: RAPID CYCLING LOCKOUT (30M)";
-        } else if (msg.startsWith("DELAY")) {
-          msgEl.style.color = "var(--accent-amber)";
-          msgEl.innerText = "INTERLOCK: 10S COOLDOWN IN EFFECT";
-        } else if (msg.startsWith("AUTH_FAILED")) {
-          msgEl.style.color = "var(--accent-red)";
-          msgEl.innerText = "ACCESS DENIED: INVALID AUTHORIZATION KEY";
-        } else {
-          msgEl.innerText = "";
-        }
-      }
-
-      // Handle GPIO 4 Switch state updates
-      if (topic === 'esp32/gpio4/status') {
-        const switchEl = document.getElementById('switchStatus');
-        const isON = (msg === "ON");
-
-        switchEl.innerText = isON ? "ON" : "OFF";
-        switchEl.className = "status " + (isON ? "on" : "off");
-      }
-    });
-
-    function sendCommand(action) {
-      const pass = document.getElementById('opPassword').value.trim();
-      if (!pass) {
-        document.getElementById('systemMessage').style.color = "var(--accent-amber)";
-        document.getElementById('systemMessage').innerText = "PLEASE ENTER AUTHORIZATION KEY";
-        return;
-      }
-
-      client.publish('esp32/relay/control', 'PASS:' + pass + ':' + action);
-    }
-  </script>
-</body>
-</html>
+    <!-- System Status Box (Wi-Fi Connection Status)
